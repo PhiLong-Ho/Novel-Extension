@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Novel Extractor",
+  "version": "1.0",
+  "description": "Extracts and copies novel text from supported websites.",
+  "permissions": ["scripting", "activeTab"],
+  "host_permissions": ["https://ncode.syosetu.com/*", "https://booktoki468.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Extract Novel"
+  },
+  "commands": {
+    "copy_novel_text": {
+      "suggested_key": {
+        "default": "Alt+Shift+C"
+      },
+      "description": "Copy novel text to clipboard"
+    }
+  }
+}
