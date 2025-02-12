@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Novel Extractor",
-  "version": "1.0",
+  "version": "1.0.1",
   "description": "Extracts and copies novel text from supported websites.",
-  "permissions": ["scripting", "activeTab"],
-  "host_permissions": ["https://ncode.syosetu.com/*", "https://booktoki468.com/*"],
+  "permissions": ["scripting", "activeTab","storage"],
+  "host_permissions": ["https://ncode.syosetu.com/*", "https://booktoki468.com/*", "https://novel18.syosetu.com/*"],
   "background": {
     "service_worker": "background.js"
   },
