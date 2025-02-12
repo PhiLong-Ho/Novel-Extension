@@ -77,6 +77,17 @@ function showPopup() {
       chrome.storage.local.set({ isCharacterLimitEnabled: toggleSwitch.checked }, () => {
         const message = toggleSwitch.checked ? 'Character limit feature enabled.' : 'Character limit feature disabled.';
         showTemporaryAlert(message);
+        if (!toggleSwitch.checked) {
+          currentPart = 1;
+          chrome.storage.local.set({ currentPart });
+          if (partInfoContainer) {
+            partInfoContainer.style.display = 'none';
+          }
+        } else {
+          if (partInfoContainer) {
+            partInfoContainer.style.display = 'flex';
+          }
+        }
       });
     });
     toggleContainer.appendChild(toggleSwitch);
@@ -157,8 +168,9 @@ function extractNovel() {
   let totalParts = 1;
   let isCharacterLimitEnabled = true;
   let isAIPromptEnabled = true;
+  let partInfoContainer;
 
-  chrome.storage.local.get(['characterLimit', 'isCharacterLimitEnabled', 'isAIPromptEnabled'], (result) => {
+  chrome.storage.local.get(['characterLimit', 'isCharacterLimitEnabled', 'isAIPromptEnabled', 'currentPart'], (result) => {
     if (result.characterLimit) {
       characterLimit = result.characterLimit;
     }
@@ -167,6 +179,9 @@ function extractNovel() {
     }
     if (result.isAIPromptEnabled !== undefined) {
       isAIPromptEnabled = result.isAIPromptEnabled;
+    }
+    if (result.currentPart) {
+      currentPart = result.currentPart;
     }
     initializeUI();
   });
@@ -202,24 +217,62 @@ function extractNovel() {
       return;
     }
 
-    const partInfoContainer = document.createElement("div");
+    partInfoContainer = document.createElement("div");
     partInfoContainer.style.position = "fixed";
-    partInfoContainer.style.top = "50px";
+    partInfoContainer.style.top = "50%"; // Center vertical
     partInfoContainer.style.right = "20px";
     partInfoContainer.style.backgroundColor = "black";
     partInfoContainer.style.color = "white";
-    partInfoContainer.style.padding = "10px";
+    partInfoContainer.style.padding = "30px";
     partInfoContainer.style.borderRadius = "5px";
     partInfoContainer.style.zIndex = "1000";
     partInfoContainer.style.display = "flex";
     partInfoContainer.style.alignItems = "center";
+    partInfoContainer.style.cursor = "move"; // Make it movable
+    partInfoContainer.style.maxWidth = "200px"; // Limit the width
     document.body.appendChild(partInfoContainer);
-    
+
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    partInfoContainer.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      offsetX = e.clientX - partInfoContainer.getBoundingClientRect().left;
+      offsetY = e.clientY - partInfoContainer.getBoundingClientRect().top;
+      partInfoContainer.style.cursor = "grabbing";
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (isDragging) {
+        partInfoContainer.style.left = `${e.clientX - offsetX}px`;
+        partInfoContainer.style.top = `${e.clientY - offsetY}px`;
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      partInfoContainer.style.cursor = "move";
+    });
+
+    const leftArrow = document.createElement("button");
+    leftArrow.innerText = "←";
+    leftArrow.style.marginRight = "10px";
+    leftArrow.style.fontSize = "20px";
+    leftArrow.addEventListener("click", () => {
+      if (currentPart > 1) {
+        currentPart--;
+        partInfoInput.value = currentPart;
+        chrome.storage.local.set({ currentPart });
+        copyCurrentPartToClipboard();
+      }
+    });
+    partInfoContainer.appendChild(leftArrow);
+
     const partInfoLabel = document.createElement("span");
     partInfoLabel.innerText = "Part: ";
     partInfoLabel.style.marginRight = "5px";
     partInfoContainer.appendChild(partInfoLabel);
-    
+
     const partInfoInput = document.createElement("input");
     partInfoInput.type = "number";
     partInfoInput.value = currentPart;
@@ -230,17 +283,33 @@ function extractNovel() {
     partInfoInput.style.borderRadius = "5px";
     partInfoInput.style.width = "40px";
     partInfoInput.style.textAlign = "center";
+    partInfoInput.style.appearance = "textfield"; // Remove spinner
     partInfoContainer.appendChild(partInfoInput);
-    
+
     const totalPartsLabel = document.createElement("span");
     totalPartsLabel.style.marginLeft = "5px";
     partInfoContainer.appendChild(totalPartsLabel);
-    
+
+    const rightArrow = document.createElement("button");
+    rightArrow.innerText = "→";
+    rightArrow.style.marginLeft = "10px";
+    rightArrow.style.fontSize = "20px";
+    rightArrow.addEventListener("click", () => {
+      if (currentPart < totalParts) {
+        currentPart++;
+        partInfoInput.value = currentPart;
+        chrome.storage.local.set({ currentPart });
+        copyCurrentPartToClipboard();
+      }
+    });
+    partInfoContainer.appendChild(rightArrow);
+
     partInfoInput.addEventListener("change", () => {
       currentPart = parseInt(partInfoInput.value, 10) || 1;
       if (currentPart < 1) currentPart = 1;
       if (currentPart > totalParts) currentPart = totalParts;
       partInfoInput.value = currentPart;
+      chrome.storage.local.set({ currentPart });
       copyCurrentPartToClipboard();
     });
     
@@ -272,7 +341,7 @@ function extractNovel() {
         console.error(err);
       });
     }
-    
+
     updatePartInfo();
     copyCurrentPartToClipboard();
   }
