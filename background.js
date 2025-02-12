@@ -36,8 +36,9 @@ function showPopup() {
       alertBox.remove();
     }, 2000);
   }
-  chrome.storage.local.get(['isCharacterLimitEnabled', 'isAIPromptEnabled'], (result) => {
+  chrome.storage.local.get(['isCharacterLimitEnabled', 'characterLimit', 'isAIPromptEnabled'], (result) => {
     const isCharacterLimitEnabled = result.isCharacterLimitEnabled !== undefined ? result.isCharacterLimitEnabled : true;
+    const characterLimit = result.characterLimit || 1000;
     const isAIPromptEnabled = result.isAIPromptEnabled !== undefined ? result.isAIPromptEnabled : true;
     const popup = document.createElement('div');
     popup.style.position = 'fixed';
@@ -79,6 +80,24 @@ function showPopup() {
       });
     });
     toggleContainer.appendChild(toggleSwitch);
+
+    const characterLimitLabel = document.createElement('span');
+    characterLimitLabel.innerText = `Current Limit: `;
+    characterLimitLabel.style.marginLeft = '10px';
+    toggleContainer.appendChild(characterLimitLabel);
+
+    const characterLimitInput = document.createElement('input');
+    characterLimitInput.type = 'number';
+    characterLimitInput.value = characterLimit;
+    characterLimitInput.style.marginLeft = '5px';
+    characterLimitInput.style.width = '60px';
+    characterLimitInput.addEventListener('change', () => {
+      const newLimit = parseInt(characterLimitInput.value, 10) || 1000;
+      chrome.storage.local.set({ characterLimit: newLimit }, () => {
+        showTemporaryAlert(`Character limit updated to ${newLimit}.`);
+      });
+    });
+    toggleContainer.appendChild(characterLimitInput);
 
     const aiPromptToggleContainer = document.createElement('div');
     aiPromptToggleContainer.style.display = 'flex';
@@ -183,45 +202,9 @@ function extractNovel() {
       return;
     }
 
-    const characterLimitContainer = document.createElement("div");
-    characterLimitContainer.style.position = "fixed";
-    characterLimitContainer.style.top = "50px";
-    characterLimitContainer.style.right = "20px";
-    characterLimitContainer.style.backgroundColor = "black";
-    characterLimitContainer.style.color = "white";
-    characterLimitContainer.style.padding = "10px";
-    characterLimitContainer.style.borderRadius = "5px";
-    characterLimitContainer.style.zIndex = "1000";
-    characterLimitContainer.style.display = "flex";
-    characterLimitContainer.style.alignItems = "center";
-    document.body.appendChild(characterLimitContainer);
-    
-    const characterLimitLabel = document.createElement("span");
-    characterLimitLabel.innerText = "Character Limit: ";
-    characterLimitLabel.style.marginRight = "5px";
-    characterLimitContainer.appendChild(characterLimitLabel);
-    
-    const characterLimitInput = document.createElement("input");
-    characterLimitInput.type = "number";
-    characterLimitInput.value = characterLimit;
-    characterLimitInput.style.backgroundColor = "black";
-    characterLimitInput.style.color = "white";
-    characterLimitInput.style.padding = "5px";
-    characterLimitInput.style.borderRadius = "5px";
-    characterLimitInput.style.width = "60px";
-    characterLimitInput.style.textAlign = "center";
-    characterLimitContainer.appendChild(characterLimitInput);
-    
-    characterLimitInput.addEventListener("change", () => {
-      characterLimit = parseInt(characterLimitInput.value, 10) || defaultCharacterLimit;
-      chrome.storage.local.set({ characterLimit });
-      updatePartInfo();
-      copyCurrentPartToClipboard();
-    });
-    
     const partInfoContainer = document.createElement("div");
     partInfoContainer.style.position = "fixed";
-    partInfoContainer.style.top = "110px";
+    partInfoContainer.style.top = "50px";
     partInfoContainer.style.right = "20px";
     partInfoContainer.style.backgroundColor = "black";
     partInfoContainer.style.color = "white";
