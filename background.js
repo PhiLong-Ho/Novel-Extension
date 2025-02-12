@@ -36,8 +36,9 @@ function showPopup() {
       alertBox.remove();
     }, 2000);
   }
-  chrome.storage.local.get('isCharacterLimitEnabled', (result) => {
+  chrome.storage.local.get(['isCharacterLimitEnabled', 'isAIPromptEnabled'], (result) => {
     const isCharacterLimitEnabled = result.isCharacterLimitEnabled !== undefined ? result.isCharacterLimitEnabled : true;
+    const isAIPromptEnabled = result.isAIPromptEnabled !== undefined ? result.isAIPromptEnabled : true;
     const popup = document.createElement('div');
     popup.style.position = 'fixed';
     popup.style.top = '10px';
@@ -79,6 +80,28 @@ function showPopup() {
     });
     toggleContainer.appendChild(toggleSwitch);
 
+    const aiPromptToggleContainer = document.createElement('div');
+    aiPromptToggleContainer.style.display = 'flex';
+    aiPromptToggleContainer.style.alignItems = 'center';
+    aiPromptToggleContainer.style.marginTop = '10px';
+    popup.appendChild(aiPromptToggleContainer);
+
+    const aiPromptToggleLabel = document.createElement('span');
+    aiPromptToggleLabel.innerText = 'AI Prompt is enabled';
+    aiPromptToggleLabel.style.marginRight = '10px';
+    aiPromptToggleContainer.appendChild(aiPromptToggleLabel);
+
+    const aiPromptToggleSwitch = document.createElement('input');
+    aiPromptToggleSwitch.type = 'checkbox';
+    aiPromptToggleSwitch.checked = isAIPromptEnabled;
+    aiPromptToggleSwitch.addEventListener('change', () => {
+      chrome.storage.local.set({ isAIPromptEnabled: aiPromptToggleSwitch.checked }, () => {
+        const message = aiPromptToggleSwitch.checked ? 'AI prompt feature enabled.' : 'AI prompt feature disabled.';
+        showTemporaryAlert(message);
+      });
+    });
+    aiPromptToggleContainer.appendChild(aiPromptToggleSwitch);
+
     const closeButton = document.createElement('button');
     closeButton.innerText = 'Close';
     closeButton.style.marginTop = '10px';
@@ -110,16 +133,21 @@ function extractNovel() {
   let titleElement, contentElement;
   const defaultCharacterLimit = 1000;
   let characterLimit = defaultCharacterLimit;
+  let defaultAIPrompt = "Translate this novel chapter to English.\n\n"
   let currentPart = 1;
   let totalParts = 1;
   let isCharacterLimitEnabled = true;
+  let isAIPromptEnabled = true;
 
-  chrome.storage.local.get(['characterLimit', 'isCharacterLimitEnabled'], (result) => {
+  chrome.storage.local.get(['characterLimit', 'isCharacterLimitEnabled', 'isAIPromptEnabled'], (result) => {
     if (result.characterLimit) {
       characterLimit = result.characterLimit;
     }
     if (result.isCharacterLimitEnabled !== undefined) {
       isCharacterLimitEnabled = result.isCharacterLimitEnabled;
+    }
+    if (result.isAIPromptEnabled !== undefined) {
+      isAIPromptEnabled = result.isAIPromptEnabled;
     }
     initializeUI();
   });
@@ -140,9 +168,12 @@ function extractNovel() {
     
     const title = titleElement.innerText.trim();
     const content = contentElement.innerText.trim();
-    const fullText = `${title}\n\n${content}`;
+    let fullText = `${title}\n\n${content}`;
     
     if (!isCharacterLimitEnabled) {
+      if (isAIPromptEnabled) {
+        fullText = defaultAIPrompt + fullText;
+      }
       navigator.clipboard.writeText(fullText).then(() => {
         showTemporaryAlert("Novel full text copied to clipboard!");
       }).catch(err => {
@@ -247,7 +278,10 @@ function extractNovel() {
     }
     
     function copyCurrentPartToClipboard() {
-      const partText = getPartText((currentPart - 1) * characterLimit, currentPart * characterLimit);
+      let partText = getPartText((currentPart - 1) * characterLimit, currentPart * characterLimit);
+      if (isAIPromptEnabled) {
+        partText = defaultAIPrompt + partText;
+      }
       navigator.clipboard.writeText(partText).then(() => {
         showTemporaryAlert(`Novel text PART ${currentPart} is copied to clipboard!`);
       }).catch(err => {
